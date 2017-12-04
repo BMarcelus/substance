@@ -1,0 +1,222 @@
+<style>
+  #gc {
+    border: 1px solid black;
+    image-rendering: optimizeSpeed;             /* Older versions of FF          */
+    image-rendering: -moz-crisp-edges;          /* FF 6.0+                       */
+    image-rendering: -webkit-optimize-contrast; /* Safari                        */
+    image-rendering: -o-crisp-edges;            /* OS X & Windows Opera (12.02+) */
+    image-rendering: pixelated;                 /* Awesome future-browsers       */
+    -ms-interpolation-mode: nearest-neighbor;   /* IE                            */ 
+  }
+</style>
+<canvas id="gc"></canvas>
+<script src='./font.js'></script>
+<script src='./images.js'></script>
+<script src='./powerups.js'></script>
+<script src='./entities.js'></script>
+<script src='./screens.js'></script>
+<script ></script>
+<script>
+//music
+//http://freemusicarchive.org/tag/video_games/
+
+  var gameState;
+
+  var soundsLoaded=0;
+  
+	function soundLoaded() {
+		soundsLoaded++;
+  }
+  
+  function loadSounds(names) {
+		result = {};
+		for(var i=0;i<names.length;i++) {
+			var sound = new Audio();
+			sound.i = i;
+			sound.onload = soundLoaded;
+			sound.src = "./sounds/"+names[i];
+			sound.alt = "sound not loaded";
+			result[names[i]]=sound;
+		}
+		return result;
+	}
+
+  var coinName = 'Coins.m4a';
+  var soundData = {
+    coin1: {sound:coinName,start:.8,length:300},
+  }
+
+  var soundCounter = 0;
+  function playSound(sound, start, length,volume,pitch) {
+    if(!soundsOn)return;
+    if(!volume)volume=1;
+    sound.volume=volume;
+    if(!pitch)pitch =2;
+    sound.mozPreservesPitch = false;
+    sound.playbackRate = pitch;
+    sound.currentTime=start;
+    sound.play();
+    var a = soundCounter ++;
+    sound.soundCount = a;
+    setTimeout(function() { if(sound.soundCount==a) sound.pause(); }, length);
+  }
+
+	var soundsToLoad = ["Chain Sounds.m4a", "Coins.m4a", "Knives.m4a","Spinner.m4a","Ramp Up.m4a","Song2.mp3"];
+  var Sounds = loadSounds(soundsToLoad);
+
+  function playSoundMenuDown() {
+    playSound(Sounds['Chain Sounds.m4a'], 29, 100);
+  }
+  function playSoundMenuUp() {
+    playSound(Sounds['Chain Sounds.m4a'], 29, 100);    
+  }
+  function playSoundMenuSelect() {
+    playSound(Sounds['Chain Sounds.m4a'], 34.15, 100);        
+  }
+  function playSoundMenuDisabled() {
+    playSound(Sounds['Chain Sounds.m4a'], 27.3, 200);                   
+  }
+  function playSoundMenuPurchase() {
+    playSound(Sounds['Coins.m4a'], 6.9, 200);                  
+  }
+  function playSoundCoinPickup() {
+    // playSound(Sounds['Coins.m4a'], 6.9, 300);      
+    playSound(Sounds['Chain Sounds.m4a'], 29, 200,null,4);          
+  }
+  function playSoundCoinWheelbarrow() {
+    // playSound(Sounds['Coins.m4a'], 6.9, 200);
+    playSound(Sounds['Chain Sounds.m4a'], 29, 200);    
+  }
+  function playSoundCoinSafe() {
+    playSound(Sounds['Coins.m4a'], 26.5, 500,.5);
+    playSound(Sounds['Chain Sounds.m4a'], 29, 200);
+    Sounds["Spinner.m4a"].pause();      
+  }
+  function playSoundDie() {
+    playSound(Sounds['Coins.m4a'], 1.2, 300,.5);
+    playSound(Sounds["Knives.m4a"], 20.6,500);
+  }
+  function playSoundLoseCoin() {
+    playSound(Sounds['Chain Sounds.m4a'], 27.3, 200);
+    playSound(Sounds['Coins.m4a'], 1, 200,.5);    
+  }
+  function playSoundSpinAttack() {
+    playSound(Sounds["Spinner.m4a"], 10,1200,null,2);
+    playSound(Sounds["Ramp Up.m4a"], 1.5, 1000,null,4);
+  }
+  function playSoundCoinFull() {
+    playSound(Sounds['Coins.m4a'], 0.74, 150,null,1);    
+  }
+var soundsOn = true;
+
+function loaded() {
+  var song = Sounds["Song2.mp3"];
+  song.volume = 0.1;
+  song.play();
+  song.loop = true;
+  var CE = document.getElementById('gc');
+  var canvas = CE.getContext('2d');
+
+  var pixelSize = 2;
+  var baseResolution = 128;
+  var scale = 2;
+
+  CE.width = baseResolution*pixelSize;
+  CE.height = baseResolution*pixelSize;
+
+  canvas.width = baseResolution;
+  canvas.height = baseResolution;
+  CE.style.width = CE.width*scale;
+  CE.style.height = CE.height*scale;
+
+  canvas.imageSmoothingEnabled = false;
+  canvas.mozImageSmoothingEnabled=false;
+  canvas.msImageSmoothingEnabled = false;
+  canvas.oImageSmoothingEnabled=false;
+  canvas.webkitImageSmoothingEnabled=false;
+
+  var screens = {
+    start: new StartScreen(),
+    typing: new TypingScreen(),
+    game: new GameScreen(canvas.width, canvas.height),
+    shop: new ShopScreen(),
+  }
+
+  function setScreen(screen) {
+    this.screen = screen;
+    this.screen.init(this);
+  }
+
+  gameState = {
+    screen: screens.start,
+    screens: screens,
+    points: 0,
+    keys: [],
+    frameCount: 0,
+    setScreen: setScreen,
+    gold: 0,
+    capacityUpgrades: 0,
+    wheelbarrows: 0,
+    wheelbarrowCapacity: 0,
+    couragePower: new LiquidCourage(),
+    paranoiaPower: new Paranoia(),
+    speedPower: new Speed(),
+    painkillPower: new Painkiller(),
+  }
+
+  var font = makeFont(16, 'Verdana', 200);
+  canvas.customFont=font;
+  canvas.fillTextCustom = function(text, x, y, leftAlign) {
+    this.customFont.drawText(this, text+'', Math.floor(x), Math.floor(y), !leftAlign);
+  }
+  // canvas.customFont2=makeFont(8, 'Verdana', 180);
+  canvas.customFont2=makeFont(9, '', 180);  
+  canvas.fillTextCustom2 = function(text, x, y, leftAlign) {
+    this.customFont2.drawText(this, text+'', Math.floor(x), Math.floor(y), !leftAlign);
+  }
+  canvas.fillRectSnap = function(x,y,w,h) {
+    canvas.fillRect(
+      Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h)
+    );
+  }
+  function step() {
+    var dt = 1000/60;
+    gameState.frameCount++;
+    gameState.screen.update(dt, gameState);
+    canvas.clearRect(0,0,CE.width, CE.height);
+    canvas.save();
+    canvas.scale(pixelSize,pixelSize);
+    canvas.drawImage(BGImage, 0,0);
+    gameState.screen.draw(canvas, gameState);
+    canvas.restore();
+
+    window.requestAnimationFrame(step);
+  }
+  step();
+  var keys = gameState.keys;
+  var music = true;
+  window.addEventListener('keydown', function(e) {
+    var k = e.keyCode;
+    if(k==32||k==37||k==38||k==39||k==40)e.preventDefault();    
+    if(keys[k])return;
+    gameState.screen.keyDown(k, gameState);      
+    keys[k] = true;
+    if(k==77) {
+      if(music) song.pause();
+      else song.play();
+      music = !music;
+      soundsOn = !soundsOn;
+    }
+  })
+  window.addEventListener('keyup', function(e) {
+    var k = e.keyCode;
+    if(!keys[k])return;
+    gameState.screen.keyUp(k, gameState);      
+    keys[k] = false;
+  })
+}
+
+
+window.onload = loaded;
+
+</script>
